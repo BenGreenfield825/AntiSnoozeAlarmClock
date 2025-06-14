@@ -31,14 +31,23 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 //  - Button to wake up screen to see current time, alarm time, and time left until alarm
 //  - Generate code to shutoff alarm when a new alarm is set and store it until it needs to be sent to the remote station
 
-tm timeThing() {
-  //connect to WiFi
+tm getNTPTime() {
+  display.clearDisplay();
+  display.setTextSize(1);             
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.println("Connecting to: ");
+  display.println(ssid);
+  display.display();
+
   Serial.printf("Connecting to %s ", ssid);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
       delay(50);
       Serial.print(".");
   }
+  display.println("CONNECTED");
+  display.display();
   Serial.println(" CONNECTED");
   
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
@@ -47,6 +56,9 @@ tm timeThing() {
   int retries = 0;
   const int maxRetries = 10;
 
+  display.clearDisplay();
+  display.println("Waiting for NTP...");
+  display.display();
   while (!getLocalTime(&timeinfo) && retries++ < maxRetries) {
     Serial.println("Waiting for NTP time...");
     delay(1000);
@@ -59,6 +71,7 @@ tm timeThing() {
     Serial.println("Failed to get time from NTP.");
   }
 
+  Serial.print("Current time: ");
   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
 
   WiFi.disconnect(true);
@@ -66,19 +79,33 @@ tm timeThing() {
   return timeinfo;
 }
 
-void testThing() {
-  display.setTextSize(1);             // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE);        // Draw white text
-  display.setCursor(0,0);             // Start at top-left corner
+void testThing(tm timeInfo) {
+  display.clearDisplay();
+  display.setTextSize(1);             
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
   display.print(F("Current time: "));
-  String test = "10:43AM";
-  display.println(test);
+  // String test = "10:43AM";
+  // display.println(test);
 
-  display.print(F("Alarm: "));
-  display.println("8:00AM");
+  // display.print(F("Alarm: "));
+  // display.println("8:00AM");
 
-  display.print("Time left: ");
-  display.println("1hr 32m");
+  // display.print("Time left: ");
+  // display.println("1hr 32m");
+
+  char timeStr[10];
+
+  strftime(timeStr, sizeof(timeStr), "%I:%M%p", &timeInfo);
+  display.println(timeStr);
+
+  // Remove leading zero
+  if (timeStr[0] == '0') {
+    Serial.println(timeStr + 1); // Skip the first character
+  } else {
+    Serial.println(timeStr);
+  }
+
 
   display.display();
 }
@@ -94,9 +121,9 @@ void setup() {
 
   display.clearDisplay();
 
-  testThing();
-  struct tm timeNumbers = timeThing();
-  Serial.println(&timeNumbers, "different place lolol %A, %B %d %Y %H:%M:%S");
+  struct tm timeNumbers = getNTPTime();
+  testThing(timeNumbers);
+  
 }
 
 // function for getting numpad inputs:
